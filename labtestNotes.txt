@@ -1,0 +1,632 @@
+<?php
+//starts the session
+session_start();
+include 'functions.inc.php';
+if(!isset($_SESSION['user'])){
+    header("Location: login_form.php");
+    exit();
+}
+else
+{
+//the logout button
+    echo "<form action='logout_function.php' method='post'>
+        <p><button name='submitLogout'>Logout</button></p>
+       </form>";
+}
+//calling the update function once the user presses the update button after they are done with the changes
+if (isset($_POST["submitUpdateData"])){
+    update($_POST['id'],$_POST['buildingName'],$_POST['buildingCity'],$_POST['buildingPostalCode'],$_POST['buildingLatitude'],$_POST['buildingLongitude']);
+}
+?>
+<html>
+<head>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+</head>
+<body>
+
+
+
+<?php
+
+//calling the create function
+create();
+echo "<h1>Latitude and Longitude of Ontario Courthouses</h1>";
+
+//the create button
+echo "<form action='create.php' method='get'>
+<p><button name='submitCreate'>Create a new entry</button></p>";
+
+
+echo "<body style='background-color:pink'>";
+//opens the csv file in read mode
+$file = fopen('data.csv', 'r');
+$rows = array();
+
+while (($line = fgetcsv($file)) !== FALSE) {
+    //$line is an array of the csv elements
+    array_push($rows, $line);
+}
+//tries to prevent ids from repeating
+if(file_exists('ids')){
+    unlink('ids');
+}
+//the headings for the table
+ echo "<table class=\"table\">";
+echo "<th align='left'>Id Number</th>";
+ echo "<th align='left'>Building Ministry Official Name</th>";
+ echo "<th align='left'>Building City</th>";
+ echo "<th align='left'>Building Postal Code</th>";
+echo "<th align='left'>Building Latitude</th>";
+echo "<th align='left'>Building Longitude</th>";
+echo "<th align='left'>Actions</th>";
+
+//reading the data into the table rows and the ids as well, ids starting at 1
+$keyId=1;
+foreach ($rows as $key => $row){
+    echo "<tr>";
+    echo "<td>";
+    $key = $key + 1;
+    echo $key;
+    echo "</td>";
+//reading the data into the table columns
+    foreach ($row as $column){
+
+        echo "<td>";
+        echo $column;
+
+        echo "</td>";
+
+    }
+
+//the delete, update and read buttons for each row
+    echo '<td><a href="delete.php?id='.$key.' "style="color:floralwhite">Delete</a></td>';
+    echo '<td><a href="update.php?id='.$key.'" style="color:floralwhite">Update</a></td>';
+    echo '<td><button type="submit" name="read" class="read-button">Read</button></td>';
+    echo "</tr>";
+
+
+}
+?>
+<!---The next button, which will go the the 2nd page of index!-->
+<a href="index.php" style="color: floralwhite">Next</a>
+<!---The previous button, which will go to the previous page of index!-->
+<a href="index.php" style="color: floralwhite">Previous</a>
+<a href="../../../folder_view/vs.php?s=<?php echo __FILE__?>" target="_blank">View Source</a>
+
+
+//Functions
+function getId(){
+    $file_name='ids';
+    if(!file_exists($file_name)){
+        touch($file_name);
+        $handle=fopen($file_name,'r+');
+        $id=0;
+    }
+    else{
+        $handle=fopen($file_name,'r+');
+        $id=fread($handle,filesize($file_name));
+        settype($id,'integer');
+    }
+    rewind($handle);
+    fwrite($handle,++$id);
+
+    fclose($handle);
+    return $id;
+}
+function update($rowId,$buildingName,$buildingCity,$buildingPostalCode,$buildingLatitude,$buildingLongitude){
+$rowId = (int)$rowId;
+
+//opens the csv file in read/write mode
+    $file_name='data.csv';
+    $handle=fopen($file_name,'r+') or die ('cannot open file: '.$file_name);
+    $rows=array();
+
+
+    while (($line = fgetcsv($handle)) !== FALSE) {
+        //$line is an array of the csv elements
+        array_push($rows, $line);
+    }
+    /*if the file is open, iterate through the table rows. If the row id matches the id user clicked on
+    create an array consisting of the row elements*/
+    if($handle){
+        for($i=0;$i<count($rows);$i++){
+            if($rowId===($i+1)){
+
+                $rows[$rowId] = array($buildingName,$buildingCity,$buildingPostalCode,$buildingLatitude,$buildingLongitude);
+            }
+        }
+        //puts the file pointer at the start of the file
+        rewind($handle);
+        //writes the new values to the row
+        foreach ($rows as $keyId=> $row) {
+            fwrite($handle,$row[0].','.$row[1].','.$row[2].','.$row[3].','.$row[4]);
+            fwrite($handle,"\n");
+        }
+        fclose($handle);
+    }
+
+
+
+
+
+}
+
+function create()
+{
+
+    //reads the user input on the form
+    if (isset($_POST['submitCreateData'])) {
+        $file_name = 'data.csv';
+        //appends the user input into the csv file
+        $handle = fopen($file_name, 'a') or die('cannot open file: ' . $file_name);
+        if ($handle) {
+            //if file can open then it will first print a newline then display the values user entered in another row
+            fwrite($handle,"\n");
+            fwrite($handle, $_POST['buildingName'] . ',' . $_POST['buildingCity'] . ',' . $_POST['buildingPostalCode'] . ',' . $_POST['buildingLatitude'] . ',' . $_POST['buildingLongitude']);
+            fclose($handle);
+        }
+
+    }
+}
+//The paginate function, which takes the limit of entries per page and the pages
+function paginate($limit=5,$page=1){
+
+}
+
+//function delete($id)
+
+
+//login form
+<?php
+/*login form, which will have the saved password and email entered in the fields, so user can just click login
+to access the main page*/
+$saved_email = "user@gb.com";
+    $saved_password = "abc";
+    $saved_password = password_hash($saved_password, PASSWORD_DEFAULT);
+
+
+    $userEmail = "";
+    $userPassword = "";
+    $emailErr = "";
+    $passwordError = "";
+
+    if (isset($_POST['submit'])) {
+        $userEmail = $_POST['email'];
+        $userPassword = $_POST['password'];
+	//displays a message if user leaves field empty
+        if (empty($userEmail) || !filter_var($userEmail, FILTER_VALIDATE_EMAIL)) {
+            $emailErr = "Please enter a valid email";
+        } else if ($userEmail !== $saved_email) {
+            $emailErr = "email does not match!";
+        } else {
+            if (empty($userPassword)) {
+                $passwordError = "Please enter a password";
+            } else if (!password_verify($userPassword, $saved_password)) {
+                $passwordError = "Invalid password";
+            } else {
+
+                session_start();
+                $_SESSION["user"] = $userEmail;
+
+                header("Location: index.php");
+                exit();
+
+            }
+        }
+
+    }
+
+ ?>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login-page</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="style.css">
+
+</head>
+<body>
+<font color="#fffaf0"
+<section id="container" class="vertical-center">
+    <form method="post" action="<?php echo $_SERVER['PHP_SELF'];?>" class="horizontal-center">
+        <div class="error"><?php echo $emailErr; ?></div>
+
+        <input type="email" name="email" placeholder="Email"
+               value="user@gb.com" />
+
+        <div class="error"><?php echo $passwordError; ?></div>
+
+        <input type="password"
+               id="password" name="password" placeholder="Password" value="abc" required />
+
+        <div class="btn-container">
+            <button type="submit" name="submit" class="submit-button">Login</button>
+        </div>
+
+
+    </form>
+
+</section>
+</body>
+</html>
+
+}
+<a href="../../../folder_view/vs.php?s=<?php echo __FILE__?>" target="_blank">View Source</a>
+
+//update form
+<?php
+if(isset($_GET['id'])){
+    $id = $_GET['id'];
+}
+
+?>
+<body style="background-color: pink">
+<form method="post" class="" action="index.php">
+    <div>
+        <!---the field for id, which is already filled in with the row id and is read only, so user cannot change!-->
+    <label for="Id">Id</label>
+    <input type="number" name="id" value="<?php echo $id; ?>" readonly>
+    </div>
+    <div>
+    <label for="buildingName">Building Name</label>
+    <input type="text" name="buildingName">
+    </div>
+
+    <div>
+    <label for="buildingCity">Building City</label>
+    <input type="text" name="buildingCity">
+    </div>
+
+    <div>
+    <label for="buildingPostalCode">Building Postal Code</label>
+    <input type="text" name="buildingPostalCode">
+    </div>
+
+    <div>
+    <label for="buildingLatitude">Building Latitude</label>
+    <input type="text" name="buildingLatitude">
+    </div>
+
+    <div>
+    <label for="buildingLongitude">Building Longitude</label>
+    <input type="text" name="buildingLongitude">
+    </div>
+
+    <td><button type="submit" name="submitUpdateData" class="update-button"  >Update</button></td>
+
+
+    <a href="../../../folder_view/vs.php?s=<?php echo __FILE__?>" target="_blank">View Source</a>
+</form>
+</body>
+
+//create form
+<body style="background-color: pink">
+
+<form method="post" class="" action="index.php">
+    <div>
+    <label for="buildingName">Building Name</label>
+    <input type="text" name="buildingName">
+    </div>
+
+    <div>
+    <label for="buildingCity">Building City</label>
+    <input type="text" name="buildingCity">
+    </div>
+
+    <div>
+    <label for="buildingPostalCode">Building Postal Code</label>
+    <input type="text" name="buildingPostalCode">
+    </div>
+
+    <div>
+    <label for="buildingLatitude">Building Latitude</label>
+    <input type="text" name="buildingLatitude">
+    </div>
+
+    <div>
+    <label for="buildingLongitude">Building Longitude</label>
+    <input type="text" name="buildingLongitude">
+    </div>
+
+    <td><button type="submit" name="submitCreateData" class="create-button"  >Create</button></td>
+
+
+    <a href="../../../folder_view/vs.php?s=<?php echo __FILE__?>" target="_blank">View Source</a>
+</form>
+
+
+<body style="background-color: pink">
+
+<form method="post" class="" action="index.php">
+    <div>
+    <label for="buildingName">Building Name</label>
+    <input type="text" name="buildingName">
+    </div>
+
+    <div>
+    <label for="buildingCity">Building City</label>
+    <input type="text" name="buildingCity">
+    </div>
+
+    <div>
+    <label for="buildingPostalCode">Building Postal Code</label>
+    <input type="text" name="buildingPostalCode">
+    </div>
+
+    <div>
+    <label for="buildingLatitude">Building Latitude</label>
+    <input type="text" name="buildingLatitude">
+    </div>
+
+    <div>
+    <label for="buildingLongitude">Building Longitude</label>
+    <input type="text" name="buildingLongitude">
+    </div>
+
+    <td><button type="submit" name="submitCreateData" class="create-button"  >Create</button></td>
+
+
+    <a href="../../../folder_view/vs.php?s=<?php echo __FILE__?>" target="_blank">View Source</a>
+</form>
+
+//Create a file
+$file_name='stuff.csv';
+$handle=fopen($file_name,'w') or die ('cannot open file: '.$file_name);
+
+//open a file,can use w, r or a, depending on what you need the file for
+$handle=fopen($file_name,'w') or die ('cannot open file: '.$file_name);
+
+//Read a file
+$handle=fopen($file_name,'r') or die ('cannot open file: '.$file_name);
+$data=fread($handle,filesize($file_name));
+
+//Write to a file
+$handle=fopen($file_name,'w') or die ('cannot open file: '.$file_name);
+$data='this is the first line';
+fwrite($handle,$data);
+
+//Append to a file
+$handle=fopen($file_name,'a') or die ('cannot open file: '.$file_name);
+$data='this is the first line';
+fwrite($handle,$data);
+$new_data="\n". 'this is the second line';
+fwrite($handle,$new_data);
+
+//Close a file
+$handle=fopen($file_name,'w') or die ('cannot open file: '.$file_name);
+$data='this is the first line';
+fclose($handle);
+
+//Delete a file
+unlink($file_name);
+
+//Create an empty file
+touch($file_name);
+
+//read file content using php
+$handle=fopen($file_name,'r');
+//if the file is open
+If ($handle){
+    //read the contents of the file into a variable called $content
+    $content=fread($handle,filesize($file_name));
+    //the display the data of $content
+    print $content;
+    //closes the file
+    fclose($handle);
+}
+//if file doesn't open
+else {
+    print 'cannot open file: ' . $file_name;
+}
+
+//write to file using php
+$handle=fopen($file_name,'w') or die ('cannot open file: '.$file_name);
+if($handle)
+{
+    $text='this is the first line\n';
+    //writes the contents of $text to the file
+    fwrite($handle,$text);
+    //writes the string to the file
+    fwrite($handle,'this is the second line');
+    //writes a string with tabbed spaces and new lines
+    fwrite($handle,'this\t is \n the \n\t last line');
+    fclose($handle);
+    
+}
+
+//append content to a file using php
+$handle=fopen($file_name,'a') or die ('cannot open file: '.$file_name);
+fwrite($handle,PHP_EOL.'This is new line added to '.$file_name);
+
+//read file character by character
+$handle=fopen($file_name,'r') or die('cannot open file: '.$file_name);
+//while pointer is not at the end of the file
+while(!feof($handle))
+{
+    //gets character at file pointer
+    print fgetc($handle);
+    print '<br />';
+}
+fclose($handle);
+
+//read file line by line
+$file_name='stuff.csv';
+$handle=fopen($file_name,'r') or die('file cannot be opened'.$file_name);
+while(!feof($handle))
+{
+    print fgets($handle);
+}
+fclose($handle);
+
+//write to file line by line
+$file_name='stuff.csv';
+$handle=fopen($file_name,'w') or die('file cannot be opened'.$file_name);
+fputs($handle,"line one\n");
+fputs($handle,"line two\n");
+fclose($handle);
+
+//reading an entire file into a string
+$file_name='stuff.csv';
+$content=file_get_contents($file_name);
+print $content;
+
+//writing a string to a file
+$file_name='stuff.csv';
+$content='this is new content';
+file_put_contents($file_name,$content);
+print file_get_contents($file_name);
+
+//writing array elements to a file
+$lines=array('line 1',
+             'line 2',
+             'line 3',
+             'line 4',
+    );
+$file_name='stuff.csv';
+$handle=fopen($file_name,'a') or die('cannot open file');
+foreach ($lines as $line)
+{
+    fwrite($handle,$line);
+}
+fclose($handle);
+
+//reading an entire file into an array
+$file_name='stuff.csv';
+$content=file($file_name);
+var_dump($content);
+
+//checks whether a directory or file exists
+$file_name='stuff.csv';
+if(file_exists($file_name))
+{
+    $content=file($file_name);
+    //join array element.Create a string with array element separated by <br>
+    print implode('<br/>',$content);
+}
+else{
+    //file doesn't exist so create one
+    $lines="line 1\n";
+    $lines.="line 2\n";
+    $lines.="line 3\n line 4\n line 5\n";
+    file_put_contents($file_name,$line);
+
+<!--File upload!-->
+<form method="post" enctype="mulitpart/form-data" action="upload.php">
+    <!---select a file!-->
+    <input type='file' name="userfile">
+    <input type="submit" name="submit">
+</form>
+
+<!---Create a file called upload.php!-->
+<?php
+if (isset($_FILES['userfile'])&& $_FILES['userfile']['error']==0)
+{
+    move_uploaded_file($_FILES['userfile']['tmp_name'],    $_FILES['userfile']['name']);
+}
+//Load upload_form.php in your browser.
+//Select a file from your computer
+// Click submit
+//Check the current directory; the file must be there now
+
+	• r: opens the file in read-only mode 
+	• r+: read/write an existing file(starts at the beginning) 
+	• w: write-only and create the file if it doesn't exist yet(erases contents of the file) 
+	• w+: read/write and create the file if it doesn't exist(erases contents of the file) 
+	• a: write to the end of the file even if it doesn't exist 
+	• a+: read/write to the end of the file even if it doesn't exist
+	• Rewind: puts the file pointer at the start
+	• PHP_EOL: works like a newline (\n)
+	• feof(): used to test for the end of a file. If file pointer is at the end it will return true
+	• fgetc: gets character from file pointer
+	• file_get_contents: Reads entire file into a string
+	• file_put_contents: Write a string to a file 
+	• file — Reads entire file into an array
+	• file_exists — Checks whether a file or directory exists
+	• scandir — List files and directories inside the specified path
+
+How set and get cookie
+- $name: the name of the cookie.
+- $value: the value of the cookie, the default is the empty string
+- $expire: The expiration date of the cookie as a timestamp. Default is zero
+- $path: the path on the server that the cookie is available. / available to all the directories on
+the current server. The default is the directory of the PHP file.
+- $domain: the domain name that the cookie is available to. Default is the name of the server
+- $secure: if TRUE, the cookies os only made available through the HTTPS. Default is false
+- $httponly: if TRUE, the cookie is only made available through the HTTP protocol and not
+thought client-size languages such as JavaScript. Default is false.
+
+//set a cookie in the browser
+$name='userid';
+$value='beatriz';
+$expire=strtotime('+1 year');
+$path='/';
+setcookie($name,$value,$expire,$path);
+
+//gets the value of a cookie from the browser
+$userid=$_COOKIE['userid']; //$userid is 'beatriz'
+
+//delete a cookie from the browser
+$expire=strtotime('-1 year');
+setcookie('userid','','/');
+
+
+//set a variable in a session
+$_SESSION['product_code']='MBT-1753';
+
+//get a variable from a session
+$product_code=$_SESSION['product_code'];
+
+//set an array in a session
+if(!isset($_SESSION['cart']))
+{
+    $_SESSION['cart']=array();
+}
+
+//add an element to an array that's stored in a session
+$_SESSION['cart']['key1']='value1';
+$_SESSION['cart']['key2']='value2';
+
+//get and use an array that's stored in a session
+$cart=$_SESSION['cart'];
+foreach($cart as $item)
+{
+    echo '<li>'.$item.'</li>';
+}
+
+//remove a session variable
+unset($_SESSION['cart']);
+
+//remove all session variables
+$_SESSION=array();
+
+//delete the session cookie from the browser
+$name=session_name();
+$expire=strtotime('-1 year');
+$params=session_get_cookie_params();
+$path=$params['path'];
+$domain=$params['domain'];
+$secure=$params['secure'];
+$httponly=$params['httponly'];
+setcookie($name,'',$expire,$path,$domain,$secure,$httponly);
+
+//get the name of the session cookie
+$name=session_name();//by default, PHPSESSID
+
+//get the value of the session id
+$id=session_id();//ex,11jefaf6477
+
+//set the session id
+session_id('abc123');
+
+	
+	
+
+
+
+
+
+
+
+
+
